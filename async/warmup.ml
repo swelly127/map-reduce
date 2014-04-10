@@ -1,8 +1,8 @@
 
 let fork d f1 f2 =
-  failwith "My mind is aglow with whirling, transient nodes of thought..."
+  Deferred.both (d >>= f1) (d >>= f2); ()
 
 let deferred_map l f =
-  failwith "Ditto."
+  return (List.map (fun x -> match Deferred.peek (x >>= f) with |Some x -> x) l)
 
 
