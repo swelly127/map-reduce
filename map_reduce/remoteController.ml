@@ -1,9 +1,9 @@
 open Async.Std
 
-let addresses = ref []
+let addresses = create ()
 
 let init addrs =
-	addresses := addrs
+	List.iter (fun x -> push addresses x) addrs
 
 module Make (Job : MapReduce.Job) = struct
 
@@ -15,10 +15,7 @@ module Make (Job : MapReduce.Job) = struct
   	module C = Combiner.Make(Job)
 
   	let map_reduce inputs =
-
-
-	Deferred.List.map addresses (fun x ->
-	 	try_with
+		Deferred.List.map addresses (fun x -> match try_with
 	 		(Tcp.connect (Tcp.to_host_and_port x)
 			 	>>= (fun lst ->
 			  	Writer.write_line w Job.name;
@@ -36,9 +33,8 @@ module Make (Job : MapReduce.Job) = struct
 			      >>| C.combine
 			      >>= fun l ->
 			    Deferred.List.map l reduce
-			)
-
-	 	if error then throw something
+			) with
+			| `Ok(a) -> a | `Err(e) -> throw e;
 	 	)
 
 

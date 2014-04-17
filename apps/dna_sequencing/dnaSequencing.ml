@@ -59,18 +59,23 @@ let print_results results : unit =
 (******************************************************************************)
 
 module Job1 = struct
-  type input
-  type key
-  type inter
-  type output
+  type input = sequence
+  type key = string
+  type inter = id * dna_type * int
+  type output = (inter * inter) list
 
   let name = "dna.job1"
 
   let map input : (key * inter) list Deferred.t =
-    failwith "Heavy decibels are playing on my guitar / We got deferred dot ts coming up through the code"
+    let rec helper start = match (String.length input.data) - start with
+      | n when n < 10 -> []
+      | _ -> (String.sub dna start (start+10), (input.id * input.kind * start))::(helper dna (start+1))
+    in helper 0
 
   let reduce (key, inters) : output Deferred.t =
-    failwith "We're just listening to the rock that's giving too much noise / Are you deaf you wanna hear some more?"
+    let ref_list = List.filter (fun x -> match x with | (_, Ref, _) -> true | _ -> false) inters in
+    let read_list = List.filter (fun x -> if mem x ref_list then false else true) inters in
+    List.concat (List.rev_map (fun x -> List.rev_map (fun y -> x, y) read_list) ref_list)
 end
 
 let () = MapReduce.register_job (module Job1)
@@ -78,23 +83,27 @@ let () = MapReduce.register_job (module Job1)
 
 
 module Job2 = struct
-  type input
-  type key
-  type inter
-  type output
+  type input = Job1.output
+  type key = (id * id)
+  type inter = (int * int)
+  type output = result list
 
   let name = "dna.job2"
 
   let map input : (key * inter) list Deferred.t =
-    failwith "Well, I asked you if you wanted any memory and refs / You said you wanted functional data types instead"
+    List.map (fun (a, b) -> match (a, b) with | (a1, a2, a3), (b1, b2, b3) -> (a1, b1), (a3, b3)) input
 
   let reduce (key, inters) : output Deferred.t =
-    failwith "We're just talking about the future / Forget about the past / I'll always stay functional / It's never gonna segfault, never gonna segfault"
+    let sorted =  List.sort (fun a b -> compare (fst a) (fst b)) inters in
+    let rec helper lst l = match lst with
+      | [] -> []
+      | [(a, b)] -> [{length=(l+10); ref=(fst a); ref_off=(snd a); read=(fst b); read_off=(snd b)}]
+      | (a, b)::(a+1, b+1)::t -> helper (a+1, b+1)::t 1
+      | (a, b)::t -> length=(l+10); ref=(fst a); ref_off=(snd a); read=(fst b); read_off=(snd b)}::(helper t 0)
+    in return (helper sorted 0)
 end
 
 let () = MapReduce.register_job (module Job2)
-
-
 
 module App  = struct
 
@@ -105,7 +114,11 @@ module App  = struct
     module MR2 = Controller(Job2)
 
     let run (input : sequence list) : result list Deferred.t =
-      failwith "Rock 'n roll ain't noise pollution / Rock 'n' roll ain't gonna die / Rock 'n' roll ain't noise pollution / Rock 'n' roll it will survive"
+      input >>= MR1.map_reduce
+      >>| List.map snd
+      >>= MR2.map_reduce
+      >>| List.map snd
+      >>| List.flatten
 
     let main args =
       read_files args
