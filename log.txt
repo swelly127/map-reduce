@@ -1,3 +1,14 @@
+commit aeee2200e8bc042509142e49809000f8a6818d3d
+Author: swelly127 <jessicashu127@gmail.com>
+Date:   Fri Apr 18 13:27:42 2014 -0400
+
+    inverted index
+
+ apps/inverted_index/invertedIndex.ml |   23 +-
+ log.txt                              | 1039 ++++++++++++++++++++++++++++++++++
+ map_reduce/remoteController.ml       |   68 ++-
+ 3 files changed, 1097 insertions(+), 33 deletions(-)
+
 commit 7e1ea5e8ecee4fb34bb573b27aa9f49e11424c03
 Author: swelly127 <jessicashu127@gmail.com>
 Date:   Fri Apr 18 03:45:50 2014 +0000
