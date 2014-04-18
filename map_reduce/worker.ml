@@ -1,11 +1,17 @@
 open Async.Std
+open Protocol
 
 module Make (Job : MapReduce.Job) = struct
 
   (* see .mli *)
   let run r w =
-    failwith "Nowhere special?  I always wanted to go there."
-
+    let module Request = WorkerRequest(Job) in let module Response = WorkerResponse(Job) in
+    Request.receive r >>= (fun x -> match x with
+      | `Eof -> return (Response.send w (Response.JobFailed("received eof")))
+      | `Ok(a) -> match a with
+                  | Request.MapRequest(input) -> Job.map input >>= (fun x -> return (Response.send w (Response.MapResult(x))))
+                  | Request.ReduceRequest(k, lst) -> Job.reduce (k, lst) >>= (fun x -> return (Response.send w (Response.ReduceResult(x))))
+    )
 end
 
 (* see .mli *)
