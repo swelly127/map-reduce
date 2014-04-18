@@ -1,3 +1,4 @@
+open Async.Std
 
 let fork d f1 f2 =
   ignore (Deferred.both (d >>= f1) (d >>= f2))

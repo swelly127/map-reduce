@@ -69,18 +69,16 @@ module Job1 = struct
   let map input : (key * inter) list Deferred.t =
     let rec helper start = match (String.length input.data) - start with
       | n when n < 10 -> []
-      | _ -> (String.sub dna start (start+10), (input.id * input.kind * start))::(helper dna (start+1))
-    in helper 0
+      | _ -> (String.sub input.data start 10, (input.id, input.kind, start))::(helper (start+1))
+    in return (helper 0)
 
   let reduce (key, inters) : output Deferred.t =
     let ref_list = List.filter (fun x -> match x with | (_, Ref, _) -> true | _ -> false) inters in
-    let read_list = List.filter (fun x -> if mem x ref_list then false else true) inters in
-    List.concat (List.rev_map (fun x -> List.rev_map (fun y -> x, y) read_list) ref_list)
+    let read_list = List.filter (fun x -> if List.mem x ref_list then false else true) inters in
+    return (List.concat (List.rev_map (fun x -> List.rev_map (fun y -> x, y) read_list) ref_list))
 end
 
 let () = MapReduce.register_job (module Job1)
-
-
 
 module Job2 = struct
   type input = Job1.output
@@ -91,15 +89,14 @@ module Job2 = struct
   let name = "dna.job2"
 
   let map input : (key * inter) list Deferred.t =
-    List.map (fun (a, b) -> match (a, b) with | (a1, a2, a3), (b1, b2, b3) -> (a1, b1), (a3, b3)) input
+    return (List.map (fun (a, b) -> match (a, b) with | (a1, a2, a3), (b1, b2, b3) -> (a1, b1), (a3, b3)) input)
 
   let reduce (key, inters) : output Deferred.t =
     let sorted =  List.sort (fun a b -> compare (fst a) (fst b)) inters in
     let rec helper lst l = match lst with
       | [] -> []
-      | [(a, b)] -> [{length=(l+10); ref=(fst a); ref_off=(snd a); read=(fst b); read_off=(snd b)}]
-      | (a, b)::(a+1, b+1)::t -> helper (a+1, b+1)::t 1
-      | (a, b)::t -> length=(l+10); ref=(fst a); ref_off=(snd a); read=(fst b); read_off=(snd b)}::(helper t 0)
+      | (a, b)::(c, d)::t when a+1=c && b+1=d -> helper ((a+1, b+1)::t) (l+1)
+      | (a, b)::t -> {length=(l+10); ref=(fst key); ref_off=(a-l); read=(snd key); read_off=(b-l)}::(helper t 0)
     in return (helper sorted 0)
 end
 
@@ -114,7 +111,7 @@ module App  = struct
     module MR2 = Controller(Job2)
 
     let run (input : sequence list) : result list Deferred.t =
-      input >>= MR1.map_reduce
+      return input >>= MR1.map_reduce
       >>| List.map snd
       >>= MR2.map_reduce
       >>| List.map snd
@@ -128,4 +125,5 @@ module App  = struct
 end
 
 let () = MapReduce.register_app (module App)
+
 
