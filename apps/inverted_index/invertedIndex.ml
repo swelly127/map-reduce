@@ -8,18 +8,19 @@ type filename = string
 (******************************************************************************)
 
 module Job = struct
-  type input
-  type key
-  type inter
-  type output
+  type input = filename * string
+  type key = string
+  type inter = filename
+  type output = inter list
 
   let name = "index.job"
 
   let map input : (key * inter) list Deferred.t =
-    failwith "I'm stepping through the door / And I'm floating in a most peculiar way / And the stars look very different today"
+    let words = AppUtils.split_words (snd input) in
+    return (List.map (fun x -> x, fst input) words)
 
   let reduce (key, inters) : output Deferred.t =
-    failwith "Here am I floating round my tin can / Far above the Moon / Planet Earth is blue / And there's nothing I can do."
+    return inters
 end
 
 (* register the job *)
@@ -60,11 +61,17 @@ module App  = struct
 
     (** The input should be a single file name.  The named file should contain
         a list of files to index. *)
-    let main args =
-      failwith "Can you hear me, Major Zardoz? Can you hear me, Major Zardoz? Can you hear me, Major Zardoz?"
+     let main args =
+      if args = [] then failwith "No files provided."
+      else
+        Deferred.List.map args read
+          >>| List.flatten
+          >>= MR.map_reduce
+          >>| output
   end
 end
 
 (* register the App *)
 let () = MapReduce.register_app (module App)
+
 
